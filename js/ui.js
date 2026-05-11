@@ -771,6 +771,82 @@ class UIManager {
             }
         });
 
+        // ── Save / Load Design ────────────────────────────────────────────────
+        document.getElementById('btn-save-design').addEventListener('click', () => {
+            const design = {
+                version: 1,
+                globalGainDb: this.cascade.globalGainDb,
+                stages: this.cascade.stages.map(s => {
+                    if (s.type === 'pole') {
+                        return { type: 'pole', f0: s.f0.value };
+                    } else {
+                        return { type: 'biquad', f0: s.f0.value, Q: s.Q.value };
+                    }
+                })
+            };
+
+            const blob = new Blob([JSON.stringify(design, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'neandertool-design.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            audio.playClick();
+        });
+
+        document.getElementById('btn-load-design').addEventListener('click', () => {
+            document.getElementById('file-upload-input').click();
+        });
+
+        document.getElementById('file-upload-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const design = JSON.parse(evt.target.result);
+
+                    if (!design.stages || !Array.isArray(design.stages)) {
+                        throw new Error('Invalid design file: missing stages array.');
+                    }
+                    if (design.stages.length > 5) {
+                        throw new Error('Design has more than 5 stages.');
+                    }
+
+                    this.cascade.clearStages();
+                    this.stagesList.innerHTML = '';
+
+                    if (typeof design.globalGainDb === 'number') {
+                        this.cascade.globalGainDb = design.globalGainDb;
+                    }
+
+                    for (const s of design.stages) {
+                        let stage;
+                        if (s.type === 'pole') {
+                            stage = new FirstOrderLowPass(s.f0 ?? 1.0);
+                        } else if (s.type === 'biquad') {
+                            stage = new SecondOrderLowPass(s.f0 ?? 1.0, s.Q ?? 0.707);
+                        } else {
+                            continue;
+                        }
+                        const added = this.cascade.addStage(stage);
+                        this.renderStageCard(added);
+                    }
+
+                    this.updateParameterDisplays();
+                    document.getElementById('message-area').textContent = `Design loaded: ${file.name}`;
+                    audio.playClick();
+                } catch (err) {
+                    document.getElementById('message-area').textContent = `Load failed: ${err.message}`;
+                }
+
+                e.target.value = '';
+            };
+            reader.readAsText(file);
+        });
+
         // Handle window resize for canvases
         window.addEventListener('resize', () => {
             if (this.resizeTimeout) {
