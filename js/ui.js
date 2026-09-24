@@ -603,11 +603,7 @@ class UIManager {
             };
         };
 
-        const isLocked = () =>
-            this.zenLocked ||
-            this.game.isPaused ||
-            this.game.mode === 'leaderboard' ||
-            document.getElementById('controls-area').classList.contains('interaction-locked');
+        const isLocked = () => this.isDesignLocked();
 
         // Curve hit test: closest sampled point of the cascade response near the cursor
         const hitsCurve = (x, y) => {
@@ -695,10 +691,7 @@ class UIManager {
             };
         };
 
-        const isLocked = () =>
-            this.zenLocked ||
-            this.game.isPaused ||
-            document.getElementById('controls-area').classList.contains('interaction-locked');
+        const isLocked = () => this.isDesignLocked();
 
         const setParam = (param, value) => {
             param.stopAnimation();
@@ -1349,6 +1342,19 @@ class UIManager {
         nextBtn.classList.toggle('pulse', passed && hasNext && this.zenLocked);
         document.getElementById('btn-prev-level').disabled = this.game.round <= 1;
         document.getElementById('btn-keep-exploring').disabled = !this.zenLocked;
+    }
+
+    /**
+     * Whether mouse editing of the design (curve / pole drag) is blocked.
+     * Uses the UI lock state rather than game.isPaused: in Zen the clock stays
+     * paused after passing a level, yet "Keep Exploring" must allow editing.
+     */
+    isDesignLocked() {
+        return this.introActive ||
+            this.zenLocked ||
+            this.game.mode === 'leaderboard' ||
+            (this.game.mode === 'challenge' && this.game.isPaused) ||
+            document.getElementById('controls-area').classList.contains('interaction-locked');
     }
 
     // ── Intro (attract mode) ─────────────────────────────────────────────
