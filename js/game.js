@@ -68,6 +68,27 @@ const LeaderboardAPI = {
     }
 };
 
+/**
+ * Does the cascade's response stay out of the template's forbidden regions?
+ * Optimal (equiripple) designs touch the limits exactly, so a tiny tolerance
+ * absorbs floating-point error (e.g. -3.0000000000000036 dB at the passband edge).
+ */
+const CONSTRAINT_TOL_DB = 1e-6;
+
+function meetsConstraints(cascade, constraints) {
+    if (!constraints) return false;
+    const { passband, stopband } = constraints;
+
+    // Passband: above dbMin AND not above 0 dB
+    const pbResponse = cascade.getFrequencyResponse(passband.freqMin, passband.freqMax, 50);
+    if (pbResponse.some(p => p.magnitudeDb < passband.dbMin - CONSTRAINT_TOL_DB)) return false;
+    if (pbResponse.some(p => p.magnitudeDb > CONSTRAINT_TOL_DB)) return false;
+
+    // Stopband: below dbMax
+    const sbResponse = cascade.getFrequencyResponse(stopband.freqMin, stopband.freqMax, 50);
+    return !sbResponse.some(p => p.magnitudeDb > stopband.dbMax + CONSTRAINT_TOL_DB);
+}
+
 // ── 15 Hardcoded Zen Levels ────────────────────────────────────────────────
 const ZEN_LEVELS = [
     { wp: 1, ratio: 3.0, Ap: 3, As: 20, minOrder: 1 },
@@ -156,20 +177,7 @@ class GameManager {
      * Check if current filter meets constraints
      */
     checkConstraints(cascade) {
-        if (!this.constraints) return false;
-
-        const { passband, stopband } = this.constraints;
-
-        // Check passband (should be above dbMin AND below 0dB)
-        const pbResponse = cascade.getFrequencyResponse(passband.freqMin, passband.freqMax, 50);
-        const pbTooLow = pbResponse.some(p => p.magnitudeDb < passband.dbMin);
-        const pbTooHigh = pbResponse.some(p => p.magnitudeDb > 0);  // Gain > 0dB is invalid
-
-        // Check stopband (should be below dbMax)
-        const sbResponse = cascade.getFrequencyResponse(stopband.freqMin, stopband.freqMax, 50);
-        const sbFails = sbResponse.some(p => p.magnitudeDb > stopband.dbMax);
-
-        return !pbTooLow && !pbTooHigh && !sbFails;
+        return meetsConstraints(cascade, this.constraints);
     }
 
     /**

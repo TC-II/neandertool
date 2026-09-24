@@ -28,6 +28,19 @@
         celebrateDurationMs: 2500,
     };
 
+    // Copy of assets/mascot/mascot.json, used when it can't be fetched (e.g. the
+    // page opened from file://, where fetch() is blocked but <img> still loads).
+    // Keep in sync when regenerating the sprites.
+    var FALLBACK_META = {
+        revision: 2, frameWidth: 96, frameHeight: 112, groundY: 107,
+        animations: {
+            idle:      { file: 'idle.png',      frames: 16, fps: 8,  loop: true },
+            greet:     { file: 'greet.png',     frames: 24, fps: 12, loop: false },
+            celebrate: { file: 'celebrate.png', frames: 12, fps: 12, loop: true },
+            exit:      { file: 'exit.png',      frames: 12, fps: 14, loop: false },
+        },
+    };
+
     var PALETTE = ['#00bcd4', '#7c4dff', '#ff9800', '#4caf50', '#f44336', '#ffffff', '#a0d8ef', '#8d6e63'];
     var FADE_MS = 220;
 
@@ -103,6 +116,10 @@
             .then(function (r) {
                 if (!r.ok) throw new Error('Mascot: mascot.json ' + r.status);
                 return r.json();
+            })
+            .catch(function (err) {
+                console.info('Mascot: using built-in metadata (' + err.message + ')');
+                return FALLBACK_META;
             })
             .then(function (json) {
                 meta = json;

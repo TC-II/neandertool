@@ -26,11 +26,11 @@ class PlotManager {
 
     /** Is a response point inside a forbidden region of the template? */
     _isForbidden(p, constraints) {
-        const EPS = 1e-6;
+        const EPS = CONSTRAINT_TOL_DB;
         if (p.magnitudeDb > EPS) return true;
         const { passband: pb, stopband: sb } = constraints;
-        if (pb && p.freq >= pb.freqMin && p.freq <= pb.freqMax && p.magnitudeDb < pb.dbMin) return true;
-        if (sb && p.freq >= sb.freqMin && p.magnitudeDb > sb.dbMax) return true;
+        if (pb && p.freq >= pb.freqMin && p.freq <= pb.freqMax && p.magnitudeDb < pb.dbMin - EPS) return true;
+        if (sb && p.freq >= sb.freqMin && p.magnitudeDb > sb.dbMax + EPS) return true;
         return false;
     }
 
@@ -110,11 +110,25 @@ class PlotManager {
     setupCanvas() {
         const dpr = window.devicePixelRatio || 1;
         const rect = this.canvas.getBoundingClientRect();
-        this.canvas.width = rect.width * dpr;
-        this.canvas.height = rect.height * dpr;
+        this.canvas.width = Math.round(rect.width * dpr);
+        this.canvas.height = Math.round(rect.height * dpr);
         this.ctx.scale(dpr, dpr);
         this.width = rect.width;
         this.height = rect.height;
+    }
+
+    /**
+     * Re-size the backing store if the displayed size changed since the last
+     * setup (layout settling after load, CSS zoom, DPR change); otherwise the
+     * browser stretches a stale bitmap and lines look jagged.
+     */
+    syncCanvasSize() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = this.canvas.getBoundingClientRect();
+        if (Math.round(rect.width * dpr) !== this.canvas.width ||
+            Math.round(rect.height * dpr) !== this.canvas.height) {
+            this.setupCanvas();
+        }
     }
 
     /**
@@ -157,7 +171,7 @@ class PlotManager {
         return this.height - ((db - this.dbMin) / (this.dbMax - this.dbMin)) * this.height;
     }
 
-    drawGrid() {
+    drawGrid(constraints = null) {
         const ctx = this.ctx;
         ctx.strokeStyle = '#1a3a4a';
         ctx.lineWidth = 1;
@@ -187,21 +201,32 @@ class PlotManager {
 
         for (let db = Math.ceil(this.dbMin / 10) * 10; db <= this.dbMax; db += 10) {
             const y = this.dbToY(db);
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(this.width, y);
-            ctx.stroke();
+            if (db !== 0) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(this.width, y);
+                ctx.stroke();
+            }
             ctx.fillText(`${db} dB`, 5, y - 2);
         }
 
-        // 0dB line (emphasized)
-        ctx.strokeStyle = '#3a5a6a';
-        ctx.lineWidth = 2;
-        const y0 = this.dbToY(0);
-        ctx.beginPath();
-        ctx.moveTo(0, y0);
-        ctx.lineTo(this.width, y0);
-        ctx.stroke();
+        // 0dB line (emphasized), skipping the stretch where the template's
+        // red border already runs along 0 dB (from 0 up to the stopband edge)
+        let x0 = 0;
+        if (constraints) {
+            x0 = constraints.stopband
+                ? Math.max(0, Math.min(this.width, this.freqToX(constraints.stopband.freqMin)))
+                : this.width;
+        }
+        if (x0 < this.width) {
+            ctx.strokeStyle = '#3a5a6a';
+            ctx.lineWidth = 2;
+            const y0 = this.dbToY(0);
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(this.width, y0);
+            ctx.stroke();
+        }
     }
 
     formatFreq(freq) {
@@ -292,8 +317,8 @@ class PlotManager {
             ctx.stroke();
             ctx.restore();
 
-            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#d65c5c';
+            ctx.lineWidth = 2; // same as the 0 dB line
             ctx.beginPath();
             for (let i = 0; i < poly.length; i++) {
                 const a = poly[i];
@@ -325,9 +350,10 @@ class PlotManager {
     }
 
     render(cascade, constraints = null, bestSolution = null, showBest = false, hoveredResponse = null) {
+        this.syncCanvasSize();
         this.autoScale(constraints);
         this.clear();
-        this.drawGrid();
+        this.drawGrid(constraints);
 
         if (constraints) {
             this.drawConstraints(constraints);
@@ -369,13 +395,7 @@ class PlotManager {
 
     // Internal constraint check for curve coloring
     _checkConstraints(cascade, constraints) {
-        const { passband, stopband } = constraints;
-        const pbResponse = cascade.getFrequencyResponse(passband.freqMin, passband.freqMax, 50);
-        if (pbResponse.some(p => p.magnitudeDb < passband.dbMin)) return false;
-        if (pbResponse.some(p => p.magnitudeDb > 0)) return false;
-        const sbResponse = cascade.getFrequencyResponse(stopband.freqMin, stopband.freqMax, 50);
-        if (sbResponse.some(p => p.magnitudeDb > stopband.dbMax)) return false;
-        return true;
+        return meetsConstraints(cascade, constraints);
     }
 }
 
@@ -393,11 +413,25 @@ class PZMapManager {
     setupCanvas() {
         const dpr = window.devicePixelRatio || 1;
         const rect = this.canvas.getBoundingClientRect();
-        this.canvas.width = rect.width * dpr;
-        this.canvas.height = rect.height * dpr;
+        this.canvas.width = Math.round(rect.width * dpr);
+        this.canvas.height = Math.round(rect.height * dpr);
         this.ctx.scale(dpr, dpr);
         this.width = rect.width;
         this.height = rect.height;
+    }
+
+    /**
+     * Re-size the backing store if the displayed size changed since the last
+     * setup (layout settling after load, CSS zoom, DPR change); otherwise the
+     * browser stretches a stale bitmap and lines look jagged.
+     */
+    syncCanvasSize() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = this.canvas.getBoundingClientRect();
+        if (Math.round(rect.width * dpr) !== this.canvas.width ||
+            Math.round(rect.height * dpr) !== this.canvas.height) {
+            this.setupCanvas();
+        }
     }
 
     autoScale(cascade, constraints) {
@@ -524,6 +558,7 @@ class PZMapManager {
     }
 
     render(cascade, constraints = null, hoveredStageId = null, showBest = false, bestSolutionStages = null) {
+        this.syncCanvasSize();
         this.autoScale(cascade, constraints);
         this.clear();
         this.drawGrid();
