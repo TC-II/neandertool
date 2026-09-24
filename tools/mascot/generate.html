@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Mascot Sprite Generator</title>
+    <style>
+        body { background: #0a1628; color: #d4f1f9; font: 13px monospace; margin: 16px; }
+        button { font: inherit; background: #0d2035; color: #fff; border: 2px solid #8d6e63; padding: 6px 12px; cursor: pointer; margin-right: 6px; }
+        button:hover { border-color: #00bcd4; }
+        #status { margin: 12px 0; color: #a0d8ef; }
+        .pv { margin: 16px 0; }
+        .pv > canvas:first-of-type { width: 288px; height: 336px; image-rendering: pixelated; display: block; background: #0d2035; border: 2px solid #1c3350; }
+        .pv .strip { image-rendering: pixelated; height: 112px; max-width: 100%; display: block; margin-top: 6px; background: repeating-conic-gradient(#0d2035 0 25%, #10263f 0 50%) 0 0 / 16px 16px; }
+    </style>
+    <script type="importmap">
+        { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+    </script>
+</head>
+
+<body>
+    <h3>Neandertool mascot — sprite generator</h3>
+    <button id="btn-render">Re-render</button>
+    <button id="btn-save">Save to assets/mascot</button>
+    <button id="btn-download">Download</button>
+    <div id="status">Loading Three.js…</div>
+    <div id="previews"></div>
+    <script type="module" src="generate.js"></script>
+</body>
+
+</html>

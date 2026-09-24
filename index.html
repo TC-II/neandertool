@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Neandertool - Retro Filter Design</title>
-    <link rel="stylesheet" href="css/style.css?v=66">
+    <link rel="stylesheet" href="css/style.css?v=75">
 </head>
 
 <body>
@@ -13,16 +13,16 @@
         <header>
             <h1>NEANDERTOOL</h1>
             <div id="header-right">
-                <div id="sensitivity-control">
-                    <label for="scroll-sensitivity">🖱 Sensitivity:</label>
-                    <input type="range" id="scroll-sensitivity" min="0.1" max="5" step="0.1" value="3">
-                    <span id="sensitivity-value">3.0×</span>
-                </div>
-                <div id="mode-selector">
-                    <button id="btn-zen" class="active">Zen</button>
-                    <button id="btn-challenge">Challenge</button>
-                    <button id="btn-sandbox">Sandbox</button>
-                    <button id="btn-leaderboard">Leaderboard</button>
+                <div id="mode-menu">
+                    <button id="btn-menu" aria-haspopup="true" aria-expanded="false">
+                        <span id="current-mode-label">Zen</span> ☰
+                    </button>
+                    <div id="mode-selector" class="hidden">
+                        <button id="btn-zen" class="active">Zen</button>
+                        <button id="btn-challenge">Challenge</button>
+                        <button id="btn-sandbox">Sandbox</button>
+                        <button id="btn-leaderboard">Leaderboard</button>
+                    </div>
                 </div>
             </div>
         </header>
@@ -30,7 +30,6 @@
         <div id="main-interface">
             <div id="plot-area">
                 <canvas id="frequency-response"></canvas>
-                <div id="plot-overlay"></div>
             </div>
 
             <div id="pzmap-area">
@@ -38,72 +37,63 @@
             </div>
 
             <aside id="controls-area">
+                <div id="level-nav">
+                    <button id="btn-prev-level">⏮ Prev</button>
+                    <button id="btn-keep-exploring" disabled>Keep Exploring</button>
+                    <button id="btn-next-level" disabled>Next ⏭</button>
+                    <button id="btn-end-game">🛑 End Game</button>
+                </div>
+
+                <div id="controls-layout">
+                    <h2>Filter Stages</h2>
+
+                    <div class="stage-card" id="global-gain-card">
+                        <div class="param-row">
+                            <label>Gain:
+                                <span class="param-value" id="global-gain-value" title="Scroll to adjust">0.0</span><span
+                                    class="param-unit">dB</span>
+                            </label>
+                            <input type="range" class="param-slider" id="global-gain-slider" min="-46" max="3"
+                                value="0" step="0.1">
+                        </div>
+                        <!-- Sandbox-only tools -->
+                        <div class="param-row" id="sandbox-row">
+                            <label>Tolerance:
+                                <span class="param-value" id="slider-tolerance-value" title="Scroll to adjust">20</span><span
+                                    class="param-unit">%</span>
+                            </label>
+                            <label>Anim:
+                                <span class="param-value" id="slider-speed-value" title="Scroll to adjust">1.0</span><span
+                                    class="param-unit">Hz</span>
+                            </label>
+                            <button id="play-all">▶ Play All</button>
+                            <button id="pause-all">⏸ Pause All</button>
+                        </div>
+                    </div>
+
+                    <div id="stages-list">
+                        <!-- Dynamic list of filter stages -->
+                    </div>
+
+                    <div class="add-buttons" id="add-buttons">
+                        <button id="add-pole">+ 1st Order</button>
+                        <button id="add-biquad">+ 2nd Order</button>
+                    </div>
+                </div>
+
                 <div id="challenge-hud" class="hidden">
                     <div class="hud-item">Time: <span id="timer" class="timer-green">60</span>s</div>
                     <div class="hud-item"><span id="score-label">Score</span>: <span id="score">0</span></div>
                     <div class="hud-item">Round: <span id="round">1</span></div>
                 </div>
 
-                <div id="controls-layout">
-                    <div id="controls-left">
-                        <div id="stages-list">
-                            <!-- Dynamic list of filter stages -->
-                        </div>
+                <div id="bottom-tools">
+                    <div id="sensitivity-control">
+                        <label for="scroll-sensitivity">🖱 Sensitivity:</label>
+                        <input type="range" id="scroll-sensitivity" min="0.1" max="5" step="0.1" value="1">
+                        <span id="sensitivity-value">1.0×</span>
                     </div>
-
-                    <div id="controls-right">
-                        <div id="filter-controls">
-                            <h2>Filter Stages</h2>
-
-                            <div class="stage-card" id="global-gain-card"
-                                style="border-color: var(--accent-cyan); height: auto;">
-                                <div class="stage-header"
-                                    style="background: var(--bg-dark); color: var(--accent-cyan); cursor: default; line-height: 1.2; padding-top: 4px; padding-bottom: 4px; margin-bottom: 15px;">
-                                    Overall System<br>Configuration</div>
-                                <div class="param-row">
-                                    <span>Gain dB</span>
-                                    <input type="range" class="param-slider" id="global-gain-slider" min="-46" max="3"
-                                        value="0" step="0.1">
-                                    <span class="param-value" id="global-gain-value" style="cursor: ns-resize;"
-                                        title="Scroll to adjust">0.0</span>
-                                </div>
-                                <div class="param-row" id="tolerance-row"
-                                    style="margin-top: 15px; align-items: center;">
-                                    <span style="line-height: 1.2;">Slider<br>Tolerance %</span>
-                                    <span class="param-value" id="slider-tolerance-value" style="cursor: ns-resize;"
-                                        title="Scroll to adjust">20</span>
-                                </div>
-                                <div class="param-row" id="speed-row" style="margin-top: 15px; align-items: center;">
-                                    <span style="line-height: 1.2;">Anim Speed<br>(Hz)</span>
-                                    <span class="param-value" id="slider-speed-value" style="cursor: ns-resize;"
-                                        title="Scroll to adjust">1.0</span>
-                                </div>
-                            </div>
-
-                            <div class="add-buttons">
-                                <button id="add-pole">+ 1st Order</button>
-                                <button id="add-biquad">+ 2nd Order</button>
-                            </div>
-                        </div>
-
-                        <div id="global-controls">
-                            <button id="play-all">▶ Play All</button>
-                            <button id="pause-all">⏸ Pause All</button>
-                            <button id="reset-all">↺ Erase Stages</button>
-                            <button id="best-solution">★ Best Solution</button>
-                            <button id="hover-stage-toggle">🔍 View Hovered Stage</button>
-                            <button id="btn-save-design">💾 Save Design</button>
-                            <button id="btn-load-design">📂 Load Design</button>
-                            <input type="file" id="file-upload-input" accept=".json,application/json" hidden>
-
-                            <!-- Challenge Mode Extra Controls -->
-                            <div class="challenge-controls-row">
-                                <button id="btn-prev-level">⏮ Prev Level</button>
-                                <button id="btn-next-level" disabled>Next Level ⏭</button>
-                                <button id="btn-end-game">🛑 End Game</button>
-                            </div>
-                        </div>
-                    </div>
+                    <button id="best-solution">★ Best Solution</button>
                 </div>
             </aside>
 
@@ -196,11 +186,13 @@
         </footer>
     </div>
 
-    <script src="js/dsp.js?v=64"></script>
-    <script src="js/ui.js?v=64"></script>
-    <script src="js/game.js?v=64"></script>
-    <script src="js/audio.js?v=64"></script>
-    <script src="js/main.js?v=64"></script>
+    <script src="js/dsp.js?v=71"></script>
+    <script src="js/ui.js?v=73"></script>
+    <script src="js/game.js?v=72"></script>
+    <script src="js/audio.js?v=71"></script>
+    <script src="js/intro.js?v=71"></script>
+    <script src="js/mascot.js?v=1"></script>
+    <script src="js/main.js?v=72"></script>
 </body>
 
 </html>

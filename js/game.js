@@ -4,12 +4,69 @@
  * Handles challenge mode, scoring, timer, and difficulty progression.
  */
 
-// ── Supabase Leaderboard Configuration ────────────────────────────────────
-// 1. Create a free project at https://supabase.com
-// 2. Replace these two values with your project's URL and anon key
-//    (found in: Project Settings → API)
-const SUPABASE_URL = 'https://iwwckvwdxdmdupxtplpv.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3d2NrdndkeGRtZHVweHRwbHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2NjcwMjcsImV4cCI6MjA4ODI0MzAyN30.Mj34IlquH1nW2vP34vL2QidJm3QDAdoXDNMLgpGnlNE';
+// ── Leaderboard API (Cloudflare Worker, see /worker) ──────────────────────
+const LEADERBOARD_URL = 'https://neandertool-leaderboard.javierpetrucci.workers.dev';
+const LEADERBOARD_CACHE_KEY = 'neandertool.leaderboard';
+const LEADERBOARD_TIMEOUT_MS = 8000;
+
+const LeaderboardAPI = {
+    async request(path, options = {}) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), LEADERBOARD_TIMEOUT_MS);
+        try {
+            return await fetch(`${LEADERBOARD_URL}${path}`, { ...options, signal: ctrl.signal });
+        } finally {
+            clearTimeout(timer);
+        }
+    },
+
+    readCache() {
+        try {
+            const data = JSON.parse(localStorage.getItem(LEADERBOARD_CACHE_KEY));
+            return Array.isArray(data) ? data : null;
+        } catch {
+            return null;
+        }
+    },
+
+    writeCache(entries) {
+        try {
+            localStorage.setItem(LEADERBOARD_CACHE_KEY, JSON.stringify(entries));
+        } catch { /* storage unavailable */ }
+    },
+
+    /** @returns {Promise<{entries: Array, offline: boolean}>} */
+    async list() {
+        try {
+            const res = await this.request('/scores');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (!Array.isArray(data)) throw new Error('Unexpected response');
+            data.forEach(e => { e.score = parseInt(e.score, 10) || 0; });
+            this.writeCache(data);
+            return { entries: data, offline: false };
+        } catch (e) {
+            console.error('Leaderboard fetch error:', e);
+            return { entries: this.readCache() || [], offline: true };
+        }
+    },
+
+    /** @returns {Promise<boolean>} true if the score was stored */
+    async submit(name, score) {
+        try {
+            const res = await this.request('/scores', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, score })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return true;
+        } catch (e) {
+            console.error('Leaderboard save error:', e);
+            return false;
+        }
+    }
+};
 
 // ── 15 Hardcoded Zen Levels ────────────────────────────────────────────────
 const ZEN_LEVELS = [
@@ -377,51 +434,19 @@ class GameManager {
     }
 
     /**
-     * Retrieve top 10 scores from Supabase
+     * Retrieve top 10 scores. Falls back to the last cached list when offline.
+     * @returns {Promise<{entries: Array, offline: boolean}>}
      */
     async getLeaderboard() {
-        try {
-            const res = await fetch(
-                `${SUPABASE_URL}/rest/v1/scores?select=name,score,date&order=score.desc&limit=10`,
-                {
-                    headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`
-                    }
-                }
-            );
-            if (res.ok) {
-                const data = await res.json();
-                // Supabase may return an error object instead of an array
-                if (!Array.isArray(data)) return [];
-                data.forEach(e => { e.score = parseInt(e.score, 10) || 0; });
-                return data;
-            }
-        } catch (e) {
-            console.error('Leaderboard fetch error:', e);
-        }
-        return [];
+        return LeaderboardAPI.list();
     }
 
     /**
-     * Save a score to Supabase
+     * Save a score (date is assigned by the server)
+     * @returns {Promise<boolean>} true if stored
      */
-    async saveScore(name, score, dateStr = null) {
-        const date = dateStr ? dateStr : new Date().toISOString().split('T')[0];
-        try {
-            await fetch(`${SUPABASE_URL}/rest/v1/scores`, {
-                method: 'POST',
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal'
-                },
-                body: JSON.stringify({ name, score, date })
-            });
-        } catch (e) {
-            console.error('Leaderboard save error:', e);
-        }
+    async saveScore(name, score) {
+        return LeaderboardAPI.submit(name, score);
     }
 
     /**
@@ -429,9 +454,11 @@ class GameManager {
      */
     async isHighScore(score) {
         if (score <= 0) return false;
-        const lb = await this.getLeaderboard();
-        if (lb.length < 10) return true;
+        const { entries, offline } = await this.getLeaderboard();
+        // Can't submit while the server is unreachable
+        if (offline) return false;
+        if (entries.length < 10) return true;
         // If it's strictly greater than the lowest score in the top 10
-        return score > lb[lb.length - 1].score;
+        return score > entries[entries.length - 1].score;
     }
 }

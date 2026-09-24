@@ -6,6 +6,18 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8777"],
       "port": 8777
+    },
+    {
+      "name": "neandertool-alt",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8779"],
+      "port": 8779
+    },
+    {
+      "name": "mascot-generator",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["tools/mascot/serve.py", "8778"],
+      "port": 8778
     }
   ]
 }

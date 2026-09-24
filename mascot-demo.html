@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neandertool - Mascot Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a1628;
+            --bg-panel: #0d2035;
+            --font-gray: #a0d8ef;
+            --primary: #8d6e63;
+            --primary-dark: #5d4037;
+            --accent-cyan: #00bcd4;
+            --accent-purple: #7c4dff;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg-dark) url('assets/background.png') center / cover fixed;
+            color: #fff;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            font-size: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            image-rendering: pixelated;
+        }
+
+        /* Mimics the real #game-container, including its zoom */
+        #game-container {
+            width: calc(90vw / 0.54);
+            min-height: calc(80vh / 0.54);
+            margin: 20px;
+            padding: 20px 24px;
+            background: var(--bg-dark);
+            border: 4px solid var(--primary);
+            box-shadow: 10px 10px 0 var(--primary-dark);
+            zoom: 0.54;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        h1 { font-size: 28px; margin: 0; color: #fff; text-shadow: 4px 4px 0 var(--primary-dark); }
+
+        .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+
+        button {
+            font: inherit;
+            font-size: 18px;
+            padding: 12px 20px;
+            background: var(--bg-panel);
+            color: #fff;
+            border: 4px solid var(--primary);
+            box-shadow: 4px 4px 0 var(--primary-dark);
+            cursor: pointer;
+        }
+
+        button:hover { border-color: var(--accent-cyan); }
+        button:active { transform: translate(4px, 4px); box-shadow: none; }
+
+        label { font-size: 16px; color: var(--font-gray); display: flex; gap: 10px; align-items: center; }
+        select, input[type=number] { font: inherit; font-size: 16px; background: var(--bg-panel); color: #fff; border: 3px solid var(--primary); padding: 6px; }
+        input[type=number] { width: 120px; }
+
+        #fake-plot {
+            flex: 1;
+            min-height: 500px;
+            border: 4px solid #1c3350;
+            background:
+                linear-gradient(#10263f 2px, transparent 2px) 0 0 / 100% 60px,
+                linear-gradient(90deg, #10263f 2px, transparent 2px) 0 0 / 80px 100%,
+                var(--bg-panel);
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            padding: 20px;
+        }
+
+        #log { font-size: 14px; color: var(--font-gray); min-height: 1em; }
+    </style>
+</head>
+
+<body>
+    <div id="game-container">
+        <h1>MASCOT DEMO</h1>
+        <div class="row">
+            <button id="btn-greet">Greet</button>
+            <button id="btn-celebrate">Celebrate</button>
+            <button id="btn-idle">Idle</button>
+            <button id="btn-hide">Hide</button>
+            <button id="btn-confetti">Confetti only</button>
+        </div>
+        <div class="row">
+            <label>Center on
+                <select id="sel-container">
+                    <option value="body">viewport</option>
+                    <option value="game">#game-container</option>
+                    <option value="plot">plot area</option>
+                </select>
+            </label>
+            <label>Scale
+                <select id="sel-scale">
+                    <option value="0">auto</option>
+                    <option value="1">1×</option>
+                    <option value="2">2×</option>
+                    <option value="3">3×</option>
+                    <option value="4">4×</option>
+                </select>
+            </label>
+            <label>Celebrate ms <input type="number" id="inp-duration" value="2500" step="250" min="500"></label>
+            <label><input type="checkbox" id="chk-reduced"> Simulate reduced motion</label>
+        </div>
+        <div id="fake-plot">
+            <button id="btn-clickthrough">Click-through test: 0</button>
+        </div>
+        <div id="log">Loading sprites…</div>
+    </div>
+
+    <script src="js/mascot.js?v=1"></script>
+    <script>
+        const $ = (id) => document.getElementById(id);
+        const log = (s) => { $('log').textContent = s; };
+
+        function container() {
+            const v = $('sel-container').value;
+            return v === 'game' ? $('game-container') : v === 'plot' ? $('fake-plot') : undefined;
+        }
+
+        function applyOptions() {
+            Mascot.init({
+                scale: Number($('sel-scale').value),
+                reducedMotion: $('chk-reduced').checked ? true : 'auto',
+            });
+        }
+
+        const t0 = performance.now();
+        Mascot.init().then(() => {
+            log(`Ready (${Math.round(performance.now() - t0)} ms). Auto-greeting…`);
+            Mascot.greet().then(() => log('greet() resolved'));
+        }).catch((e) => log(e.message));
+
+        ['sel-scale', 'chk-reduced'].forEach((id) => $(id).addEventListener('change', applyOptions));
+
+        $('btn-greet').onclick = () => {
+            log('greet…');
+            Mascot.greet(container()).then(() => log('greet() resolved'));
+        };
+        $('btn-celebrate').onclick = () => {
+            log('celebrate…');
+            const t = performance.now();
+            Mascot.celebrate(container(), { durationMs: Number($('inp-duration').value) })
+                .then(() => log(`celebrate() resolved after ${Math.round(performance.now() - t)} ms`));
+        };
+        $('btn-idle').onclick = () => {
+            log('idle (until Hide)…');
+            Mascot.idle(container()).then(() => log('idle() resolved'));
+        };
+        $('btn-hide').onclick = () => Mascot.hide();
+        $('btn-confetti').onclick = () => {
+            Mascot.confetti(container()).then(() => log('confetti() resolved'));
+        };
+        let clicks = 0;
+        $('btn-clickthrough').onclick = () => { $('btn-clickthrough').textContent = `Click-through test: ${++clicks}`; };
+    </script>
+</body>
+
+</html>

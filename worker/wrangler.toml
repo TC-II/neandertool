@@ -1,0 +1,8 @@
+name = "neandertool-leaderboard"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "neandertool-leaderboard"
+database_id = "e6351f66-4c10-4b0e-ad69-1a30d89e2a53"

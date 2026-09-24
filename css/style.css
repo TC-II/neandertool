@@ -56,20 +56,28 @@ body {
 }
 
 /* ── Main Container ─────────────────────────────────────────── */
+/* Fit-to-viewport: --ui-zoom is computed in js/main.js (fitToViewport) so the
+   whole UI scales to the available window; the container fills it and the
+   panels stretch to the remaining height. */
+:root {
+    --ui-zoom: 0.54;
+    --ui-gap: 12px;
+}
+
 #game-container {
-    width: calc(90vw / 0.54);
+    width: calc((100vw - 2 * var(--ui-gap)) / var(--ui-zoom));
+    height: calc((100vh - 2 * var(--ui-gap)) / var(--ui-zoom));
     max-width: none;
     background: var(--bg-dark);
     border: 4px solid var(--primary);
-    margin: 20px;
+    margin: calc(var(--ui-gap) / var(--ui-zoom));
     padding: 20px 24px;
     display: flex;
     flex-direction: column;
     position: relative;
     /* Hard pixel shadows */
     box-shadow: 10px 10px 0px var(--border-dark);
-    zoom: 0.54;
-    /* Scale entire UI down by an additional 20% */
+    zoom: var(--ui-zoom);
 }
 
 /* Top decorative pixel line */
@@ -118,10 +126,45 @@ h2 {
     letter-spacing: 1px;
 }
 
-/* ── Mode Selector ───────────────────────────────────────────── */
-#mode-selector {
+/* ── Mode Menu (hamburger) ───────────────────────────────────── */
+#mode-menu {
+    position: relative;
+}
+
+#btn-menu {
     display: flex;
-    gap: 10px;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+}
+
+#btn-menu:hover,
+#btn-menu[aria-expanded="true"] {
+    background: var(--accent-cyan);
+    color: var(--bg-dark);
+    border-color: var(--accent-cyan);
+}
+
+#mode-selector {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 220px;
+    padding: 8px;
+    background: var(--bg-panel);
+    border: 4px solid var(--primary);
+    box-shadow: 6px 6px 0px var(--border-dark);
+}
+
+#mode-selector button {
+    text-align: left;
+    width: 100%;
 }
 
 /* ── Sensitivity Control ─────────────────────────────────────── */
@@ -171,6 +214,7 @@ h2 {
     display: flex;
     gap: 20px;
     flex: 1;
+    min-height: 0;
     width: 100%;
 }
 
@@ -180,12 +224,14 @@ h2 {
     background: #000510;
     border: 4px solid var(--primary);
     position: relative;
-    height: 680px;
+    min-height: 0;
     overflow: hidden;
     box-shadow: inset 4px 4px 0px var(--bg-panel);
 }
 
 #frequency-response {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     display: block;
@@ -198,12 +244,14 @@ h2 {
     /* slightly darker to differentiate */
     border: 4px solid var(--primary);
     position: relative;
-    height: 680px;
+    min-height: 0;
     overflow: hidden;
     box-shadow: inset 4px 4px 0px var(--bg-panel);
 }
 
 #pzmap-canvas {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     display: block;
@@ -215,17 +263,113 @@ h2 {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    height: 680px;
+    min-height: 0;
 }
 
 #controls-area * {
     box-sizing: border-box;
 }
 
-#controls-area.interaction-locked {
+#controls-area.interaction-locked,
+#controls-layout.interaction-locked {
     pointer-events: none !important;
     filter: grayscale(40%);
     opacity: 0.8;
+}
+
+/* ── Level Navigation (Prev / Keep Exploring / Next) ─────────── */
+#level-nav {
+    display: flex;
+    gap: 10px;
+    height: 55px;
+    flex: none;
+}
+
+#level-nav button {
+    flex: 1;
+    padding: 0 8px;
+    font-size: 11px;
+    border-color: var(--accent-purple);
+    color: var(--accent-purple);
+}
+
+#level-nav button:hover:not(:disabled) {
+    background: var(--accent-purple);
+    color: var(--font-white);
+}
+
+#level-nav button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+    background: var(--bg-panel);
+    color: var(--accent-purple);
+}
+
+#btn-keep-exploring {
+    flex: 1.4 !important;
+}
+
+/* Intro: the middle button becomes a flashy BEGIN */
+#level-nav #btn-keep-exploring.begin {
+    font-size: 14px;
+    background: var(--accent-orange);
+    border-color: var(--accent-orange);
+    color: var(--bg-dark);
+    animation: begin-pulse 1.4s ease-in-out infinite;
+}
+
+#level-nav #btn-keep-exploring.begin:hover {
+    background: var(--font-white);
+    border-color: var(--font-white);
+    color: var(--bg-dark);
+}
+
+@keyframes begin-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 152, 0, 0);
+    }
+
+    50% {
+        background: #ffad33;
+        border-color: #ffad33;
+        box-shadow: 0 0 10px 3px rgba(255, 152, 0, 0.55);
+    }
+}
+
+/* Next becomes the obvious call to action once the level is passed */
+#btn-next-level.ready {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+    color: var(--bg-dark);
+}
+
+#btn-next-level.ready:hover {
+    background: var(--font-white);
+    border-color: var(--font-white);
+    color: var(--bg-dark);
+}
+
+#btn-next-level.ready.pulse {
+    animation: next-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes next-pulse {
+    0%, 100% {
+        background: var(--accent-green);
+        border-color: var(--accent-green);
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.9);
+    }
+
+    50% {
+        background: #b2ff59;
+        border-color: #b2ff59;
+        box-shadow: 0 0 18px 6px rgba(178, 255, 89, 0.7);
+    }
+}
+
+#game-container:not(.challenge-mode) #level-nav {
+    display: none;
 }
 
 /* ── Challenge HUD ───────────────────────────────────────────── */
@@ -321,103 +465,44 @@ button.active:hover {
 
 /* ── Filter Controls ─────────────────────────────────────────── */
 #controls-layout {
-    display: flex;
     flex: 1;
-    gap: 15px;
     min-height: 0;
-}
-
-#controls-left,
-#controls-right {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-}
-
-#controls-left {
-    flex: 1;
+    gap: 8px;
     background: var(--bg-panel);
     border: 4px solid var(--primary);
     padding: 10px;
-    overflow: hidden;
-    min-width: 0;
+    overflow-y: auto;
 }
 
-#controls-right {
-    flex: 0 0 240px;
-}
-
-#filter-controls {
-    background: var(--bg-panel);
-    border: 4px solid var(--primary);
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-#filter-controls h2 {
-    margin-bottom: 5px;
+#controls-layout h2 {
+    margin-bottom: 4px;
 }
 
 #stages-list {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    height: 100%;
+    gap: 8px;
     width: 100%;
     min-width: 0;
+}
+
+#stages-list:empty {
+    display: none;
 }
 
 .stage-card {
     background: var(--bg-dark);
     border: 2px solid var(--primary);
-    padding: 5px 10px;
+    padding: 6px 10px 10px;
     -webkit-user-select: none;
-    /* Safari */
-    -ms-user-select: none;
-    /* IE 10 and IE 11 */
     user-select: none;
-    /* Standard syntax */
-    height: 125px;
     flex: none;
     max-width: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: space-evenly;
-}
-
-.challenge-mode .stage-card {
-    height: 110px;
-    flex: none;
-}
-
-.param-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-}
-
-.param-row span {
-    color: var(--font-dark);
-    font-size: 10px;
-    white-space: nowrap;
-}
-
-#global-gain-card {
-    padding: 10px;
-    height: auto;
-}
-
-#global-gain-value {
-    border-bottom: none !important;
-}
-
-.add-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .stage-card:hover {
@@ -437,18 +522,36 @@ button.active:hover {
     font-size: 10px;
 }
 
+/* Each parameter takes half the card width: value centered over its slider */
 .stage-params {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 5px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: end;
 }
 
-.challenge-mode .stage-params {
-    flex-direction: row;
-    gap: 18px;
-    align-items: center;
-    justify-content: flex-start;
+.param-control {
+    min-width: 0;
+}
+
+.stage-params .param-top-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    row-gap: 6px;
+    column-gap: 8px;
+}
+
+.stage-params .param-top-row label {
+    grid-column: 1 / -1;
+    text-align: center;
+}
+
+.stage-params .param-top-row .param-slider {
+    grid-column: 1;
+}
+
+.challenge-mode .stage-params .param-top-row .param-slider {
+    grid-column: 1 / -1;
 }
 
 .remove-btn {
@@ -467,75 +570,57 @@ button.active:hover {
     background: var(--accent-red);
     color: var(--font-white);
     transform: translate(0, 0);
-    /* override button hover */
     box-shadow: none;
 }
 
-.param-control {
-    margin: 2px 0;
-}
-
-/* Challenge mode scroll controls */
-
-.param-top-row {
+/* Parameter row: label + scrollable value + slider (+ play in sandbox) */
+.param-top-row,
+.param-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 10px;
     width: 100%;
 }
 
-.param-top-row label {
+.param-top-row label,
+.param-row label {
     flex-shrink: 0;
-    display: inline-block;
+    white-space: nowrap;
     color: var(--font-gray);
     font-size: 8px;
     letter-spacing: 1px;
-    width: 90px;
-}
-
-.challenge-mode .param-top-row label {
-    width: auto;
-    white-space: nowrap;
 }
 
 .param-value {
     color: var(--accent-cyan);
     font-size: 12px;
-}
-
-.param-unit {
-    display: inline;
-    margin-left: 5px;
-    margin-right: 4px;
-}
-
-/* Challenge mode scroll controls */
-.challenge-mode .param-value {
     cursor: ns-resize;
     display: inline-block;
     border-bottom: 2px solid var(--accent-cyan);
     padding: 2px 6px 2px 4px;
-    /* Give the right edge more internal breathing room */
     width: 65px;
     text-align: right;
 }
 
-.challenge-mode .param-value:hover {
+/* The whole parameter zone is scrollable: highlight its value while hovered */
+.param-control:hover .param-value,
+#global-gain-card .param-row:not(#sandbox-row):hover .param-value,
+.param-value:hover {
     background: var(--accent-cyan);
     color: var(--bg-dark);
 }
 
-.challenge-mode .param-slider,
-.challenge-mode .play-btn,
-.challenge-mode .range-controls {
-    display: none;
+.param-unit {
+    display: inline-block;
+    margin-left: 5px;
+    min-width: 24px;
 }
 
 /* Sliders */
 .param-slider {
     width: 100%;
     flex: 1;
+    min-width: 40px;
     height: 8px;
     -webkit-appearance: none;
     appearance: none;
@@ -551,13 +636,6 @@ button.active:hover {
     cursor: pointer;
 }
 
-.range-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 8px;
-}
-
 .play-btn {
     padding: 0;
     font-size: 10px;
@@ -568,17 +646,52 @@ button.active:hover {
     border-radius: 4px;
 }
 
+.challenge-mode .play-btn {
+    display: none;
+}
+
+/* Global gain card */
+#global-gain-card {
+    border-color: var(--accent-cyan);
+    padding: 10px;
+}
+
+#sandbox-row {
+    justify-content: space-between;
+}
+
+#sandbox-row button {
+    white-space: nowrap;
+    padding: 8px 8px;
+    font-size: 8px;
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+}
+
+#sandbox-row button:hover {
+    background: var(--accent-cyan);
+    color: var(--bg-dark);
+}
+
+.challenge-mode #sandbox-row {
+    display: none;
+}
+
+/* Add-stage buttons (sit right under the last stage) */
 .add-buttons {
     display: flex;
+    flex-direction: row;
     gap: 10px;
-    margin-top: 15px;
+    flex: none;
 }
 
 .add-buttons button {
     flex: 1;
-    font-size: 8px;
+    font-size: 9px;
     padding: 12px 6px;
-    border-color: var(--accent-cyan);
+    border: 2px dashed var(--accent-cyan);
+    color: var(--accent-cyan);
+    box-shadow: none;
 }
 
 .add-buttons button:hover {
@@ -586,83 +699,61 @@ button.active:hover {
     color: var(--bg-dark);
 }
 
-/* ── Global Controls ─────────────────────────────────────────── */
-#global-controls {
+/* ── Bottom tools (sensitivity + best solution) ──────────────── */
+#bottom-tools {
     display: flex;
-    flex-direction: column;
     gap: 10px;
+    flex: none;
 }
 
-#global-controls button {
-    padding: 14px 8px;
-    border-color: var(--accent-cyan);
-    color: var(--accent-cyan);
-    font-weight: bold;
+#bottom-tools #sensitivity-control {
+    flex: 1;
+    justify-content: space-between;
 }
 
-#global-controls button:hover {
-    background: var(--accent-cyan);
-    color: var(--bg-dark);
+#bottom-tools #scroll-sensitivity {
+    flex: 1;
+    width: auto;
 }
 
-.challenge-mode #play-all,
-.challenge-mode #pause-all,
-.challenge-mode #tolerance-row,
-.challenge-mode #speed-row {
-    display: none;
-}
-
-#game-container:not(.challenge-mode) #global-gain-slider {
-    display: none;
-}
-
-#game-container:not(.challenge-mode) #reset-all,
-#game-container:not(.challenge-mode) #best-solution,
-#game-container:not(.challenge-mode) #hover-stage-toggle,
-#game-container:not(.challenge-mode) #btn-prev-level,
-#game-container:not(.challenge-mode) #btn-next-level,
-#game-container:not(.challenge-mode) #btn-end-game {
-    display: none;
-}
-
-#best-solution,
-#hover-stage-toggle,
-#btn-prev-level,
-#btn-next-level,
-#btn-end-game {
+#best-solution {
+    font-size: 9px;
+    padding: 8px 10px;
     border-color: var(--accent-purple);
     color: var(--accent-purple);
 }
 
-.challenge-controls-row {
-    display: flex;
-    gap: 10px;
-    width: 100%;
-}
-
-.challenge-controls-row button {
-    flex: 1;
-}
-
-#best-solution:hover,
-#hover-stage-toggle:hover,
-#btn-prev-level:hover,
-#btn-next-level:hover:not(:disabled),
-#btn-end-game:hover {
+#best-solution:hover {
     background: var(--accent-purple);
     color: var(--font-white);
 }
 
-#btn-next-level:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-}
-
-#best-solution.active,
-#hover-stage-toggle.active {
+#best-solution.active {
     background: var(--accent-purple);
     color: var(--font-white);
     border-color: var(--accent-purple);
+}
+
+#game-container:not(.challenge-mode) #best-solution {
+    display: none;
+}
+
+/* ── PZ map drag ─────────────────────────────────────────────── */
+#pzmap-canvas.pole-hover {
+    cursor: grab;
+}
+
+#pzmap-canvas.pole-drag {
+    cursor: grabbing;
+}
+
+/* ── Magnitude curve drag ────────────────────────────────────── */
+#frequency-response.curve-hover {
+    cursor: grab;
+}
+
+#frequency-response.curve-drag {
+    cursor: grabbing;
 }
 
 /* ── Challenge Popups ────────────────────────────────────────── */
@@ -855,7 +946,7 @@ footer {
     background: var(--bg-panel);
     border: 4px solid var(--accent-orange);
     padding: 30px;
-    height: 680px;
+    min-height: 0;
     overflow-y: auto;
 }
 

@@ -432,7 +432,7 @@ class ChebyshevSolver {
         const stages = [];
         // Complex conjugate pairs -> Second-order stages
         for (const p of poles) {
-            if (p.im > 0) { // Only process one from the conjugate pair
+            if (p.omega > 1e-10) { // Only process one from the conjugate pair
                 const f0 = Math.sqrt(p.sigma * p.sigma + p.omega * p.omega);
                 const Q = f0 / (-2 * p.sigma);
                 stages.push(new SecondOrderLowPass(f0, Q));
@@ -441,7 +441,7 @@ class ChebyshevSolver {
 
         // Real poles -> First-order stages
         for (const p of poles) {
-            if (Math.abs(p.im) < 1e-10) { // Check for purely real poles
+            if (Math.abs(p.omega) <= 1e-10) { // Check for purely real poles
                 const f0 = -p.sigma;
                 stages.push(new FirstOrderLowPass(f0));
             }
